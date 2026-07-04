@@ -17,6 +17,10 @@ class AppSettings {
   bool streamResponses;
   bool showReasoning;
 
+  // browser (beta)
+  bool browserEnabled; // fetch pages linked in the user's message
+  int browserCharLimit; // max chars of page text passed to the model
+
   AppSettings({
     this.locale = 'ru',
     this.activeProviderId = '',
@@ -29,6 +33,8 @@ class AppSettings {
     this.systemPrompt = '',
     this.streamResponses = true,
     this.showReasoning = true,
+    this.browserEnabled = false,
+    this.browserCharLimit = 8000,
   });
 }
 
@@ -49,6 +55,8 @@ class SettingsStore {
       systemPrompt: _p.getString('systemPrompt') ?? '',
       streamResponses: _p.getBool('streamResponses') ?? true,
       showReasoning: _p.getBool('showReasoning') ?? true,
+      browserEnabled: _p.getBool('browserEnabled') ?? false,
+      browserCharLimit: _p.getInt('browserCharLimit') ?? 8000,
     );
   }
 
@@ -64,6 +72,8 @@ class SettingsStore {
     await _p.setString('systemPrompt', s.systemPrompt);
     await _p.setBool('streamResponses', s.streamResponses);
     await _p.setBool('showReasoning', s.showReasoning);
+    await _p.setBool('browserEnabled', s.browserEnabled);
+    await _p.setInt('browserCharLimit', s.browserCharLimit);
   }
 
   // custom providers persisted as JSON list

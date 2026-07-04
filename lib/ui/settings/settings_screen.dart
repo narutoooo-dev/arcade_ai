@@ -158,6 +158,32 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ]),
 
+              _Section(title: l.browser, children: [
+                _SwitchRow(
+                  icon: Icons.language_rounded,
+                  title: l.browser,
+                  subtitle: l.browserSub,
+                  value: s.browserEnabled,
+                  onChanged: (v) {
+                    s.browserEnabled = v;
+                    app.persistSettings();
+                  },
+                ),
+                if (s.browserEnabled)
+                  _SliderRow(
+                    icon: Icons.short_text_rounded,
+                    title: l.browserLimit,
+                    value: s.browserCharLimit.toDouble(),
+                    min: 1000,
+                    max: 20000,
+                    display: '${s.browserCharLimit}',
+                    onChanged: (v) {
+                      s.browserCharLimit = (v / 500).round() * 500;
+                      app.persistSettings();
+                    },
+                  ),
+              ]),
+
               _Section(title: l.chooseProvider, children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,

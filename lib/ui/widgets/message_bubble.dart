@@ -76,12 +76,59 @@ class MessageBubble extends StatelessWidget {
                 ],
               ),
             ),
+            if (isUser && (msg.web.isNotEmpty || msg.webLoading)) _webChips(),
           ],
         ),
       ),
     ).animate().fadeIn(duration: 260.ms).slideY(
         begin: 0.12, end: 0, duration: 280.ms, curve: Curves.easeOutCubic);
   }
+
+  // Browser (beta): one pill per fetched page — host + size, red on failure.
+  Widget _webChips() => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          alignment: WrapAlignment.end,
+          children: [
+            if (msg.webLoading)
+              _chip(Icons.language_rounded, l.pageLoading, AppColors.violetSoft),
+            ...msg.web.map((w) => w.ok
+                ? _chip(Icons.language_rounded,
+                    '${w.host} · ${_kChars(w.text.length)}', AppColors.violetSoft)
+                : _chip(Icons.link_off_rounded, '${w.host} · ${w.error}',
+                    AppColors.danger)),
+          ],
+        ),
+      );
+
+  static String _kChars(int n) =>
+      n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
+
+  Widget _chip(IconData icon, String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceHigh.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 5),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 200),
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
 
   Widget _images() => Padding(
         padding: const EdgeInsets.only(bottom: 10),

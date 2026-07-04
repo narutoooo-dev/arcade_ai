@@ -108,7 +108,7 @@ class LlmClient {
       messages.add({'role': 'system', 'content': cfg.systemPrompt});
     }
     for (final m in history) {
-      messages.add({'role': m.role.name, 'content': m.text});
+      messages.add({'role': m.role.name, 'content': _withWeb(m)});
     }
 
     final req = http.Request('POST', uri)
@@ -167,7 +167,7 @@ class LlmClient {
         messages.add({
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': m.text},
+            {'type': 'text', 'text': _withWeb(m)},
             ...m.images.map((a) => {
                   'type': 'image_url',
                   'image_url': {'url': a.dataUri},
@@ -175,7 +175,7 @@ class LlmClient {
           ],
         });
       } else {
-        messages.add({'role': m.role.name, 'content': m.text});
+        messages.add({'role': m.role.name, 'content': _withWeb(m)});
       }
     }
 
@@ -252,11 +252,11 @@ class LlmClient {
                     'data': a.base64,
                   },
                 }),
-            {'type': 'text', 'text': m.text},
+            {'type': 'text', 'text': _withWeb(m)},
           ],
         });
       } else {
-        messages.add({'role': m.role.name, 'content': m.text});
+        messages.add({'role': m.role.name, 'content': _withWeb(m)});
       }
     }
 
@@ -314,6 +314,20 @@ class LlmClient {
         throw LlmException(json['error']?['message'] ?? 'Anthropic error');
       }
     }
+  }
+
+  // Browser (beta): fetched page text rides along with the user's message,
+  // invisible in the chat UI.
+  String _withWeb(ChatMessage m) {
+    if (m.role != Role.user || m.web.isEmpty) return m.text;
+    final buf = StringBuffer(m.text);
+    for (final w in m.web) {
+      if (!w.ok || w.text.isEmpty) continue;
+      buf.write('\n\n[Web page ${w.url}');
+      if (w.title.isNotEmpty) buf.write(' — ${w.title}');
+      buf.write(']:\n${w.text}');
+    }
+    return buf.toString();
   }
 
   // ---- helpers ----

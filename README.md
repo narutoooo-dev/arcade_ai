@@ -26,6 +26,11 @@ own endpoint (Polza AI, a proxy, or a local Ollama server).
 - **Reasoning view** — for thinking models (o-series, DeepSeek R1, Claude with
   extended thinking) a collapsible panel shows *how* the model reasoned before answering.
 - **Vision** — attach photos to your message where the model supports it.
+- **Browser (beta)** — paste a link into your message and the app downloads
+  the page itself, strips the HTML and hands the clean text to the model.
+  Even a tiny local model (1B on Ollama) can "read the web". Toggle it in
+  settings; the per-page text limit is adjustable (8000 chars by default),
+  and the chat shows only a compact "🌐 site · size" chip.
 - **Compare two models** — long-press Send to ask two models the same prompt
   side by side, then keep the better answer and continue with it.
 - **Bilingual UI** — English / Russian, picked on the welcome screen, switchable later.

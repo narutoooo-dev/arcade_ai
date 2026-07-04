@@ -62,6 +62,15 @@ class L {
   String get streamResponses => _p('Стриминг ответа', 'Stream responses');
   String get showReasoningSetting =>
       _p('Показывать размышления', 'Show reasoning');
+  String get browser => _p('Браузер (бета)', 'Browser (beta)');
+  String get browserSub => _p(
+      'Скачивать страницы по ссылкам из сообщения и передавать их текст модели',
+      'Fetch pages linked in your message and feed their text to the model');
+  String get browserLimit => _p('Лимит текста страницы', 'Page text limit');
+  String get browserLimitSub => _p(
+      'Символов на страницу — меньше для маленьких моделей',
+      'Characters per page — keep it low for small models');
+  String get pageLoading => _p('загрузка…', 'fetching…');
   String get about => _p('О приложении', 'About');
   String get unlock => _p('Разблокировать', 'Unlock');
   String get locked => _p('Заблокировано', 'Locked');

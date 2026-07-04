@@ -8,6 +8,7 @@ import '../data/settings_store.dart';
 import '../models/chat.dart';
 import '../models/llm_provider.dart';
 import '../services/llm_client.dart';
+import '../services/web_fetch_service.dart';
 
 class AppState extends ChangeNotifier {
   final SettingsStore _settingsStore = SettingsStore();
@@ -195,6 +196,21 @@ class AppState extends ChangeNotifier {
   // ---- chat ----
   void clearChat() => newChat();
 
+  // Browser (beta): download pages linked in the message; the model gets
+  // their text alongside the prompt, the UI shows a chip per page.
+  Future<void> _attachWeb(ChatMessage m) async {
+    if (!settings.browserEnabled) return;
+    final urls = WebFetchService.extractUrls(m.text);
+    if (urls.isEmpty) return;
+    m.webLoading = true;
+    notifyListeners();
+    final snippets = await Future.wait(urls.map(
+        (u) => WebFetchService.fetch(u, maxChars: settings.browserCharLimit)));
+    m.web.addAll(snippets);
+    m.webLoading = false;
+    notifyListeners();
+  }
+
   Future<void> send(String text, {List<Attachment> images = const []}) async {
     final provider = activeProvider;
     if (provider == null || _sending) return;
@@ -205,7 +221,9 @@ class AppState extends ChangeNotifier {
       session.title =
           text.trim().length > 40 ? '${text.trim().substring(0, 40)}…' : text.trim();
     }
-    session.messages.add(ChatMessage(role: Role.user, text: text, images: images));
+    final userMsg =
+        ChatMessage(role: Role.user, text: text, images: images);
+    session.messages.add(userMsg);
     final reply = ChatMessage(role: Role.assistant, streaming: true);
     session.messages.add(reply);
     session.touch();
@@ -214,6 +232,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _attachWeb(userMsg);
       final key = await secure.readKey(provider.id) ?? '';
       final extras = await secure.readExtras(provider.id);
       final cfg = GenerationConfig(
@@ -260,7 +279,8 @@ class AppState extends ChangeNotifier {
       session.title =
           text.trim().length > 40 ? '${text.trim().substring(0, 40)}…' : text.trim();
     }
-    session.messages.add(ChatMessage(role: Role.user, text: text));
+    final userMsg = ChatMessage(role: Role.user, text: text);
+    session.messages.add(userMsg);
     final reply = ChatMessage(
       role: Role.assistant,
       compare: true,
@@ -275,6 +295,7 @@ class AppState extends ChangeNotifier {
     _stop = false;
     notifyListeners();
 
+    await _attachWeb(userMsg);
     final history = session.messages.where((m) => m != reply).toList();
     final key = await secure.readKey(provider.id) ?? '';
     final extras = await secure.readExtras(provider.id);
