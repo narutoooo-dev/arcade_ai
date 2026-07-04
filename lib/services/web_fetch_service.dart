@@ -1,9 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:html/parser.dart' as html_parser;
-import 'package:http/http.dart' as http;
 
 import '../models/chat.dart';
+
+class _FetchResult {
+  final int statusCode;
+  final String contentType;
+  final List<int> bytes;
+  const _FetchResult(
+      {required this.statusCode,
+      required this.contentType,
+      required this.bytes});
+}
 
 /// Browser (beta): downloads pages linked in the user's message and turns
 /// them into clean text the model can read — so even a 1B model can "browse".
@@ -37,28 +48,25 @@ class WebFetchService {
   }
 
   static Future<WebSnippet> fetch(String url, {int maxChars = 8000}) async {
+    // The client is owned here (not by _get) so a timeout can force-close a
+    // stalled connection; otherwise the dangling socket keeps the VM busy.
+    final hc = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 12)
+      ..userAgent = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) '
+          'AppleWebKit/537.36 (KHTML, like Gecko) '
+          'Chrome/126.0.0.0 Mobile Safari/537.36';
     try {
-      final res = await http.get(Uri.parse(url), headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 13; Mobile) ArcadeAI/1.2 (like wget)',
-        'Accept':
-            'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ru,en;q=0.8',
-      }).timeout(const Duration(seconds: 20));
+      final res = await _get(hc, Uri.parse(url))
+          .timeout(const Duration(seconds: 25));
       if (res.statusCode >= 400) {
         return WebSnippet(url: url, error: 'HTTP ${res.statusCode}');
       }
-
-      // The http package falls back to latin1 without a charset header, which
-      // garbles Cyrillic — prefer a UTF-8 decode of the raw bytes.
-      String body;
-      try {
-        body = utf8.decode(res.bodyBytes);
-      } catch (_) {
-        body = res.body;
+      if (res.statusCode >= 300) {
+        return WebSnippet(url: url, error: 'redirect loop');
       }
 
-      final type = (res.headers['content-type'] ?? '').toLowerCase();
+      final body = utf8.decode(res.bytes, allowMalformed: true);
+      final type = res.contentType.toLowerCase();
       String title = '';
       String text;
       if (type.contains('html') || _looksHtml(body)) {
@@ -89,7 +97,46 @@ class WebFetchService {
       return WebSnippet(url: url, error: 'timeout');
     } catch (e) {
       return WebSnippet(url: url, error: e.toString());
+    } finally {
+      hc.close(force: true);
     }
+  }
+
+  // Some sites (anti-bot walls like Qrator) redirect to themselves and expect
+  // the session cookie back on the next hop; package:http follows redirects
+  // without forwarding cookies, so those sites loop forever. Follow redirects
+  // by hand, carrying cookies along the chain.
+  static Future<_FetchResult> _get(HttpClient hc, Uri start) async {
+    var uri = start;
+    final jar = <Cookie>[];
+    for (var hop = 0; hop < 6; hop++) {
+      final req = await hc.getUrl(uri);
+      req.followRedirects = false;
+      req.headers
+        ..set(HttpHeaders.acceptHeader,
+            'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8')
+        ..set('Accept-Language', 'ru,en;q=0.8');
+      req.cookies.addAll(jar);
+      final res = await req.close();
+      jar.addAll(res.cookies);
+      final loc = res.headers.value(HttpHeaders.locationHeader);
+      if (res.statusCode >= 300 && res.statusCode < 400 && loc != null) {
+        await res.drain<void>();
+        uri = uri.resolve(loc);
+        continue;
+      }
+      final bb = BytesBuilder(copy: false);
+      await for (final chunk in res) {
+        bb.add(chunk);
+        if (bb.length > 3 << 20) break; // 3 MB is plenty for text
+      }
+      return _FetchResult(
+        statusCode: res.statusCode,
+        contentType: res.headers.value(HttpHeaders.contentTypeHeader) ?? '',
+        bytes: bb.takeBytes(),
+      );
+    }
+    return const _FetchResult(statusCode: 310, contentType: '', bytes: []);
   }
 
   static bool _looksHtml(String s) {
