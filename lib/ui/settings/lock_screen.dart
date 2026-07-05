@@ -32,8 +32,8 @@ class _LockScreenState extends State<LockScreen> {
     try {
       final ok = await _auth.authenticate(
         localizedReason: l.unlock,
-        options: const AuthenticationOptions(
-            stickyAuth: true, biometricOnly: false),
+        persistAcrossBackgrounding: true,
+        biometricOnly: false,
       );
       if (ok && mounted) context.read<AppState>().unlock();
     } catch (_) {
