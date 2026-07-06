@@ -131,7 +131,8 @@ class LlmClient {
     }
 
     if (!cfg.stream) {
-      final json = jsonDecode(await res.stream.bytesToString());
+      final json = jsonDecode(await res.stream.bytesToString()
+          .timeout(const Duration(minutes: 3)));
       final msg = (json['choices'] as List?)?.first?['message']
           as Map<String, dynamic>?;
       yield StreamDelta(text: msg?['content'] as String? ?? '');
@@ -200,7 +201,8 @@ class LlmClient {
     }
 
     if (!cfg.stream) {
-      final json = jsonDecode(await res.stream.bytesToString());
+      final json = jsonDecode(await res.stream.bytesToString()
+          .timeout(const Duration(minutes: 3)));
       final msg = (json['choices'] as List?)?.first?['message']
           as Map<String, dynamic>?;
       final text = msg?['content'] as String? ?? '';
@@ -283,7 +285,8 @@ class LlmClient {
     }
 
     if (!cfg.stream) {
-      final json = jsonDecode(await res.stream.bytesToString());
+      final json = jsonDecode(await res.stream.bytesToString()
+          .timeout(const Duration(minutes: 3)));
       final blocks = json['content'] as List? ?? [];
       final textBuf = StringBuffer();
       final thinkBuf = StringBuffer();
@@ -332,7 +335,13 @@ class LlmClient {
 
   // ---- helpers ----
   Stream<String> _sseLines(http.StreamedResponse res) async* {
+    // A silently dropped connection otherwise leaves the stream (and the UI)
+    // hanging forever mid-answer.
     final lines = res.stream
+        .timeout(const Duration(seconds: 90), onTimeout: (sink) {
+          sink.addError(LlmException('stream stalled: no data for 90 s'));
+          sink.close();
+        })
         .transform(utf8.decoder)
         .transform(const LineSplitter());
     await for (final raw in lines) {

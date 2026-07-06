@@ -107,4 +107,4 @@ class AppTheme {
 
 const String kRepo = 'NickIBrody/arcade_ai';
 const String kRepoUrl = 'https://github.com/NickIBrody/arcade_ai';
-const String kAppVersion = '1.2.1';
+const String kAppVersion = '1.2.2';

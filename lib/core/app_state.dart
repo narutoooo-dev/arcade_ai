@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
@@ -56,10 +57,40 @@ class AppState extends ChangeNotifier {
 
   bool locked = false;
   bool _sending = false;
-  bool _stop = false;
   bool get sending => _sending;
 
-  void stopGenerating() => _stop = true;
+  // Active stream subscriptions: Stop must cancel them directly — a flag
+  // checked "on next delta" never fires when the connection has stalled.
+  final List<StreamSubscription<StreamDelta>> _subs = [];
+  final List<Completer<void>> _dones = [];
+
+  void stopGenerating() {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    _subs.clear();
+    for (final d in _dones) {
+      if (!d.isCompleted) d.complete();
+    }
+    _dones.clear();
+  }
+
+  // Applies stream deltas as they arrive; completes on done, error or Stop.
+  Future<void> _pump(Stream<StreamDelta> stream,
+      void Function(StreamDelta) apply, void Function(Object) fail) {
+    final done = Completer<void>();
+    _dones.add(done);
+    _subs.add(stream.listen((d) {
+      apply(d);
+      notifyListeners();
+    }, onError: (Object e) {
+      fail(e);
+      if (!done.isCompleted) done.complete();
+    }, onDone: () {
+      if (!done.isCompleted) done.complete();
+    }, cancelOnError: true));
+    return done.future;
+  }
 
   List<LlmProvider> get allProviders =>
       [...ProvidersCatalog.builtIns, ...customProviders];
@@ -228,7 +259,6 @@ class AppState extends ChangeNotifier {
     session.messages.add(reply);
     session.touch();
     _sending = true;
-    _stop = false;
     notifyListeners();
 
     try {
@@ -251,15 +281,15 @@ class AppState extends ChangeNotifier {
         extras: extras,
       );
 
-      await for (final d in stream) {
-        if (_stop) break;
+      await _pump(stream, (d) {
         reply.text += d.text;
         reply.reasoning += d.reasoning;
-        notifyListeners();
-      }
+      }, (e) => reply.error = e.toString());
     } catch (e) {
       reply.error = e.toString();
     } finally {
+      _subs.clear();
+      _dones.clear();
       reply.streaming = false;
       _sending = false;
       session.touch();
@@ -292,7 +322,6 @@ class AppState extends ChangeNotifier {
     session.messages.add(reply);
     session.touch();
     _sending = true;
-    _stop = false;
     notifyListeners();
 
     await _attachWeb(userMsg);
@@ -306,16 +335,16 @@ class AppState extends ChangeNotifier {
           stream: settings.streamResponses,
         );
 
-    Future<void> streamInto(String model, bool isA) async {
-      try {
-        await for (final d in _client.stream(
+    Future<void> streamInto(String model, bool isA) {
+      return _pump(
+        _client.stream(
             provider: provider,
             apiKey: key,
             model: model,
             history: history,
             config: cfg(),
-            extras: extras)) {
-          if (_stop) break;
+            extras: extras),
+        (d) {
           if (isA) {
             reply.text += d.text;
             reply.reasoning += d.reasoning;
@@ -323,18 +352,20 @@ class AppState extends ChangeNotifier {
             reply.altText += d.text;
             reply.altReasoning += d.reasoning;
           }
-          notifyListeners();
-        }
-      } catch (e) {
-        if (isA) {
-          reply.error = e.toString();
-        } else {
-          reply.altError = e.toString();
-        }
-      }
+        },
+        (e) {
+          if (isA) {
+            reply.error = e.toString();
+          } else {
+            reply.altError = e.toString();
+          }
+        },
+      );
     }
 
     await Future.wait([streamInto(modelA, true), streamInto(modelB, false)]);
+    _subs.clear();
+    _dones.clear();
     reply.streaming = false;
     reply.altStreaming = false;
     _sending = false;
