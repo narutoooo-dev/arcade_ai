@@ -1,6 +1,6 @@
 # Arcade AI
 
-> Универсальный клиент языковых моделей для Android — тёмный, плавный, безопасный.
+> Универсальный клиент языковых моделей для Android, Windows и Linux — тёмный, плавный, безопасный.
 
 🇬🇧 [English version](README.md)
 
@@ -142,11 +142,23 @@ lib/
 
 ```bash
 flutter pub get
+
+# Android (нужен Android SDK; минимум Android 6.0 / API 23)
 flutter build apk --release
 # результат: build/app/outputs/flutter-apk/app-release.apk
+
+# Windows (собирается на Windows-машине с Visual Studio)
+flutter build windows --release
+
+# Linux
+flutter build linux --release
 ```
 
-Нужны Flutter (stable) и Android SDK. Минимум — Android 6.0 (API 23).
+Нужен Flutter (stable). **Пользователям Windows собирать ничего не надо** —
+к каждому релизу приложен `ArcadeAI-Setup-x.y.z.exe`: обычный установщик
+(Program Files, ярлык в «Пуск», деинсталлятор), который автоматически
+собирает GitHub Actions (`.github/workflows/windows.yml` +
+`windows/installer.iss`).
 
 ## Модель безопасности
 

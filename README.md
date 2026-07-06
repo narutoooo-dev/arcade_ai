@@ -1,6 +1,6 @@
 # Arcade AI
 
-> Universal multi-provider LLM chat client for Android — dark, fluid, secure.
+> Universal multi-provider LLM chat client for Android, Windows and Linux — dark, fluid, secure.
 
 🇷🇺 [Версия на русском](README.ru.md)
 
@@ -135,11 +135,22 @@ lib/
 
 ```bash
 flutter pub get
+
+# Android (requires the Android SDK; minimum Android 6.0 / API 23)
 flutter build apk --release
 # output: build/app/outputs/flutter-apk/app-release.apk
+
+# Windows (run on a Windows machine with Visual Studio)
+flutter build windows --release
+
+# Linux
+flutter build linux --release
 ```
 
-Requires Flutter (stable) and the Android SDK. Minimum Android 6.0 (API 23).
+Requires Flutter (stable). **Windows users don't need to build anything** —
+every release ships `ArcadeAI-Setup-x.y.z.exe`, a regular installer (Program
+Files, Start menu shortcut, uninstaller) built automatically by GitHub Actions
+(`.github/workflows/windows.yml` + `windows/installer.iss`).
 
 ## Security model
 
