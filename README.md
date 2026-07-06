@@ -1,6 +1,7 @@
 # Arcade AI
 
 > Universal multi-provider LLM chat client for Android, Windows and Linux — dark, fluid, secure.
+> Windows and Linux builds are **beta** for now — Android is the primary platform.
 
 🇷🇺 [Версия на русском](README.ru.md)
 
@@ -147,10 +148,13 @@ flutter build windows --release
 flutter build linux --release
 ```
 
-Requires Flutter (stable). **Windows users don't need to build anything** —
-every release ships `ArcadeAI-Setup-x.y.z.exe`, a regular installer (Program
-Files, Start menu shortcut, uninstaller) built automatically by GitHub Actions
-(`.github/workflows/windows.yml` + `windows/installer.iss`).
+Requires Flutter (stable). **Windows and Linux users don't need to build
+anything** — every release ships `ArcadeAI-Setup-x.y.z.exe` (a regular
+installer: Program Files, Start menu shortcut, uninstaller; built
+automatically by GitHub Actions from `.github/workflows/windows.yml` +
+`windows/installer.iss`) and `ArcadeAI-x.y.z-amd64.deb` (packaged by
+`tool/build_deb.sh`). Both desktop builds are **beta**: the core chat works,
+but they get less testing than Android.
 
 ## Security model
 

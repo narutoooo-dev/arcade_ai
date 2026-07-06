@@ -1,6 +1,7 @@
 # Arcade AI
 
 > Универсальный клиент языковых моделей для Android, Windows и Linux — тёмный, плавный, безопасный.
+> Версии для Windows и Linux пока в статусе **беты** — основная платформа Android.
 
 🇬🇧 [English version](README.md)
 
@@ -154,11 +155,13 @@ flutter build windows --release
 flutter build linux --release
 ```
 
-Нужен Flutter (stable). **Пользователям Windows собирать ничего не надо** —
-к каждому релизу приложен `ArcadeAI-Setup-x.y.z.exe`: обычный установщик
-(Program Files, ярлык в «Пуск», деинсталлятор), который автоматически
-собирает GitHub Actions (`.github/workflows/windows.yml` +
-`windows/installer.iss`).
+Нужен Flutter (stable). **Пользователям Windows и Linux собирать ничего не
+надо** — к каждому релизу приложены `ArcadeAI-Setup-x.y.z.exe` (обычный
+установщик: Program Files, ярлык в «Пуск», деинсталлятор; автоматически
+собирает GitHub Actions из `.github/workflows/windows.yml` +
+`windows/installer.iss`) и `ArcadeAI-x.y.z-amd64.deb` (собирается
+`tool/build_deb.sh`). Обе десктопные версии — **бета**: базовый чат работает,
+но тестируются они меньше, чем Android.
 
 ## Модель безопасности
 
