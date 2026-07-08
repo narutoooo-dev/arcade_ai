@@ -7,8 +7,8 @@
 
 Arcade AI is a single mobile app that talks to **any** large language model. Drop
 in an API key, pick a provider, choose a model — and chat. From global giants
-(OpenAI, Anthropic, Google) to Russian platforms (YandexGPT, GigaChat) to your
-own endpoint (Polza AI, a proxy, or a local Ollama server).
+(OpenAI, Anthropic, Google) to Russian platforms (GigaChat) to your
+own endpoint
 
 <p align="center"><i>Black canvas · violet aurora · buttery animations</i></p>
 
