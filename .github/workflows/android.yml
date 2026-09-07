@@ -2,19 +2,19 @@ name: Android Build
 
 on:
   push:
-    branches: [ main ]  # الفرع الرئيسي main
+    branches: [ main ]
     paths:
       - 'android/**'
       - 'lib/**'
       - 'pubspec.yaml'
       - '.github/workflows/android.yml'
   pull_request:
-    branches: [ main ]  # الفرع الرئيسي main
+    branches: [ main ]
     paths:
       - 'android/**'
       - 'lib/**'
       - 'pubspec.yaml'
-  workflow_dispatch: # يسمح بتشغيل يدوي
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -22,60 +22,52 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. استنساخ المستودع
       - name: Checkout code
         uses: actions/checkout@v4
       
-      # 2. إعداد Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
       
-      # 3. إعداد Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
       
-      # 4. التحقق من بيئة Flutter
       - name: Verify Flutter setup
         run: flutter doctor -v
       
-      # 5. تحميل الاعتماديات
       - name: Get dependencies
         run: flutter pub get
       
-      # 6. تحليل الكود (تجاهل التحذيرات info-level)
       - name: Analyze code (non-fatal)
         run: |
           echo "🔍 Running flutter analyze (info-level issues are ignored)"
           flutter analyze --no-fatal-infos --no-fatal-warnings || true
-        continue-on-error: true  # يستمر حتى مع وجود تحذيرات
+        continue-on-error: true
       
-      # 7. تشغيل الاختبارات (تجاهل الفشل)
       - name: Run tests (non-fatal)
         run: |
           echo "🧪 Running tests..."
           flutter test || true
         continue-on-error: true
       
-      # 8. تنظيف المشروع قبل البناء
       - name: Clean project
         run: flutter clean
       
-      # 9. بناء APK للتطوير (غير موقع) مع تقسيم حسب المعمارية
+      # ✅ الطريقة الصحيحة لبناء APK غير موقع
       - name: Build debug APK
         run: flutter build apk --debug --split-per-abi
       
-      # 10. بناء APK للإصدار (غير موقع) - بدون توقيع
       - name: Build release APK (unsigned)
-        run: flutter build apk --release --split-per-abi --no-sign
-        # --no-sign يمنع محاولة التوقيع، مما يلغي الحاجة لـ keystore
+        run: |
+          # تعطيل التوقيع مؤقتاً عن طريق إزالة إعدادات التوقيع من build.gradle
+          sed -i 's/signingConfig signingConfigs.release/signingConfig null/g' android/app/build.gradle
+          flutter build apk --release --split-per-abi
       
-      # 11. رفع ملفات APK كـ Artifacts
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:
@@ -88,9 +80,10 @@ jobs:
           name: release-unsigned-apks
           path: build/app/outputs/flutter-apk/*-release.apk
       
-      # 12. بناء App Bundle (للإصدار لمتجر Play) - اختياري
       - name: Build App Bundle (unsigned)
-        run: flutter build appbundle --release --no-sign
+        run: |
+          sed -i 's/signingConfig signingConfigs.release/signingConfig null/g' android/app/build.gradle
+          flutter build appbundle --release
       
       - name: Upload App Bundle
         uses: actions/upload-artifact@v4
@@ -98,7 +91,6 @@ jobs:
           name: app-bundle-unsigned
           path: build/app/outputs/bundle/release/*.aab
 
-  # وظيفة لنشر إصدار تلقائي للـ main branch
   create-release:
     name: Create Release
     needs: build-android
@@ -146,7 +138,7 @@ jobs:
             هذا الإصدار **غير موقع** (unsigned) - مناسب للتجربة والاختبار.
           files: release-apks/*.apk
           draft: false
-          prerelease: false  # إصدار نهائي (ليس تجريبي)
-          target_commitish: main  # الإصدار من فرع main
+          prerelease: false
+          target_commitish: main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
