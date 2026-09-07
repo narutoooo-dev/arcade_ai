@@ -1,0 +1,115 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ dev ]  # تغيير إلى dev
+    paths:
+      - 'android/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/android.yml'
+  pull_request:
+    branches: [ dev ]  # تغيير إلى dev
+    paths:
+      - 'android/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+  workflow_dispatch: # يسمح بتشغيل يدوي
+
+jobs:
+  build-android:
+    name: Build Android APK (Unsigning)
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. استنساخ المستودع
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # 2. إعداد Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      # 3. إعداد Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+      
+      # 4. التحقق من بيئة Flutter
+      - name: Verify Flutter setup
+        run: flutter doctor -v
+      
+      # 5. تحميل الاعتماديات
+      - name: Get dependencies
+        run: flutter pub get
+      
+      # 6. تحليل الكود (اختياري)
+      - name: Analyze code
+        run: flutter analyze
+      
+      # 7. تشغيل الاختبارات (اختياري)
+      - name: Run tests
+        run: flutter test
+      
+      # 8. بناء APK للتطوير (غير موقع) مع تقسيم حسب المعمارية
+      - name: Build debug APK
+        run: flutter build apk --debug --split-per-abi
+      
+      # 9. بناء APK للإصدار (غير موقع) - بدون توقيع
+      - name: Build release APK (unsigned)
+        run: flutter build apk --release --split-per-abi --no-sign
+        # --no-sign يمنع محاولة التوقيع، مما يلغي الحاجة لـ keystore
+      
+      # 10. رفع ملفات APK كـ Artifacts
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apks
+          path: build/app/outputs/flutter-apk/*-debug.apk
+      
+      - name: Upload release APKs (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-unsigned-apks
+          path: build/app/outputs/flutter-apk/*-release.apk
+      
+      # 11. بناء App Bundle (للإصدار لمتجر Play) - اختياري
+      - name: Build App Bundle (unsigned)
+        run: flutter build appbundle --release --no-sign
+      
+      - name: Upload App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle-unsigned
+          path: build/app/outputs/bundle/release/*.aab
+
+  # وظيفة لنشر إصدار تلقائي للـ dev branch
+  create-dev-release:
+    name: Create Dev Release
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    
+    steps:
+      - name: Download release APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: release-unsigned-apks
+          path: release-apks
+      
+      - name: Create Dev Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: dev-v${{ github.run_number }}
+          name: Dev Build #${{ github.run_number }}
+          files: release-apks/*.apk
+          draft: false
+          prerelease: true  # جعله إصدار تجريبي
+          target_commitish: dev  # الإصدار من فرع dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
