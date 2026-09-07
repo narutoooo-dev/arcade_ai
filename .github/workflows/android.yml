@@ -61,18 +61,18 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug --split-per-abi
       
-      # ✅ بناء APK بدون توقيع - باستخدام keystore وهمي
+      # ✅ بناء APK بدون توقيع باستخدام keystore وهمي (طريقة مبسطة)
       - name: Build release APK (unsigned)
         run: |
           echo "🔑 Creating dummy keystore..."
           
-          # إنشاء keystore وهمي
-          keytool -genkey -v -keystore dummy.jks -keyalg RSA -keysize 2048 -validity 10000 -alias dummy -dname "CN=Dummy, OU=Dummy, O=Dummy, L=Dummy, S=Dummy, C=US" -storepass dummy -keypass dummy -noprompt
+          # إنشاء keystore وهمي باستخدام أمر مبسط
+          keytool -genkeypair -v -keystore dummy.jks -storepass 123456 -keypass 123456 -alias dummy -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown"
           
           # إنشاء ملف key.properties
           echo "storeFile=dummy.jks" > android/key.properties
-          echo "storePassword=dummy" >> android/key.properties
-          echo "keyPassword=dummy" >> android/key.properties
+          echo "storePassword=123456" >> android/key.properties
+          echo "keyPassword=123456" >> android/key.properties
           echo "keyAlias=dummy" >> android/key.properties
           
           echo "📦 Building release APK..."
@@ -94,7 +94,6 @@ jobs:
       
       - name: Build App Bundle (unsigned)
         run: |
-          # استخدام نفس keystore الوهمي
           flutter build appbundle --release
       
       - name: Upload App Bundle
