@@ -58,32 +58,27 @@ jobs:
       - name: Clean project
         run: flutter clean
       
-      # ✅ طريقة آمنة للبناء بدون توقيع
       - name: Build debug APK
         run: flutter build apk --debug --split-per-abi
       
+      # ✅ بناء APK بدون توقيع - باستخدام keystore وهمي
       - name: Build release APK (unsigned)
         run: |
-          # تحقق من وجود الملف
-          ls -la android/app/
+          echo "🔑 Creating dummy keystore..."
           
-          # تعطيل التوقيع في build.gradle
-          if [ -f "android/app/build.gradle" ]; then
-            # إنشاء نسخة احتياطية
-            cp android/app/build.gradle android/app/build.gradle.bak
-            
-            # إزالة سطر التوقيع
-            sed -i '/signingConfig signingConfigs.release/d' android/app/build.gradle
-            
-            # بناء APK
-            flutter build apk --release --split-per-abi
-            
-            # استعادة الملف الأصلي
-            mv android/app/build.gradle.bak android/app/build.gradle
-          else
-            echo "❌ ملف build.gradle غير موجود!"
-            exit 1
-          fi
+          # إنشاء keystore وهمي
+          keytool -genkey -v -keystore dummy.jks -keyalg RSA -keysize 2048 -validity 10000 -alias dummy -dname "CN=Dummy, OU=Dummy, O=Dummy, L=Dummy, S=Dummy, C=US" -storepass dummy -keypass dummy -noprompt
+          
+          # إنشاء ملف key.properties
+          echo "storeFile=dummy.jks" > android/key.properties
+          echo "storePassword=dummy" >> android/key.properties
+          echo "keyPassword=dummy" >> android/key.properties
+          echo "keyAlias=dummy" >> android/key.properties
+          
+          echo "📦 Building release APK..."
+          flutter build apk --release --split-per-abi
+          
+          echo "✅ Build completed!"
       
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
@@ -99,12 +94,8 @@ jobs:
       
       - name: Build App Bundle (unsigned)
         run: |
-          if [ -f "android/app/build.gradle" ]; then
-            cp android/app/build.gradle android/app/build.gradle.bak
-            sed -i '/signingConfig signingConfigs.release/d' android/app/build.gradle
-            flutter build appbundle --release
-            mv android/app/build.gradle.bak android/app/build.gradle
-          fi
+          # استخدام نفس keystore الوهمي
+          flutter build appbundle --release
       
       - name: Upload App Bundle
         uses: actions/upload-artifact@v4
